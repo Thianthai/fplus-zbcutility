@@ -17,3 +17,12 @@
 |---|---|---|
 | ZARE002 | `ZCL_ZARE002_SFDC_RESULT` — `send` / `check_connection` ขอ client จาก `create_sfdc_client` | ✅ `fplus-zare002` `11b4185` (2026-09-21) |
 | ZARI002 | `ZCL_ZARI002_SFDC_NOTIFY` — เหมือนกัน (ping `/services/data/` ของมันก็ไม่พิสูจน์ token) | ⬜ นอก scope ZARE002 |
+| ARI001 | arrangement `ZCA_BILLING_LIST_TO_SF` (scenario `ZCS_BILLING_LIST_TO_SF`) เห็นบน `SFDC_DEV` 2026-09-21 — ถ้าเป็น OAuth 2.0 จะเจอ token ค้างแบบเดียวกัน | ⬜ นอก scope · ยังไม่ได้ดู code |
+
+## User for Outbound Communication บน `SFDC_DEV`
+
+| แถว | ใครใช้ | ลบได้เมื่อ |
+|---|---|---|
+| User ID and Password (client id / secret) | `ZCA_SFDC_TOKEN` | — ตัวหลักของ `ZCL_UTILITY` |
+| OAuth 2.0 (Form Field) | arrangement OAuth ทุกตัวที่ยังเหลือ: `ZCA_REJECT_RESULT` (ลบใน ZARE002 8C.10) · ZARI002 · ARI001 | **หลัง** ผู้เรียกทุกตัวย้ายมา `create_sfdc_client` แล้วลบ/เปลี่ยน arrangement ของตัวเอง — platform ไม่ยอมลบ user ที่ยังมี arrangement ชี้อยู่ |
+
