@@ -40,6 +40,14 @@ CLASS zcl_utility DEFINITION
       RAISING   cx_http_dest_provider_error
                 cx_web_http_client_error.
 
+    "! ทดสอบว่า Communication Arrangement + token ใช้ได้จริง — ขอ token แล้ว GET /services/data/v66.0/limits (endpoint ที่ต้องใช้ token)
+    "! คืน 200 = ใช้ได้
+    "! คืน 401 = Salesforce ไม่รับ token
+    "! คืน 0 = ต่อไม่ถึง หรือขอ token ไม่ได้ (http_status ของ token ถ้ามี)
+    "! ห้ามใช้ /services/data/ เป็น ping เพราะ endpoint นั้นไม่ต้องใช้ token จะได้ 200 เสมอ
+    CLASS-METHODS check_sfdc_connection
+      RETURNING VALUE(rv_status) TYPE i.
+
     "! อ่าน token response ของ Salesforce
     "! ถ้าสำเร็จ คืน access_token + instance_url
     "! ถ้าไม่สำเร็จ คืน error + error_description
@@ -56,6 +64,7 @@ CLASS zcl_utility DEFINITION
       gc_sfdc_comm_scenario TYPE sxco_cds_object_name VALUE 'ZCS_SFDC_TOKEN',
       gc_sfdc_service_id    TYPE c LENGTH 40          VALUE 'ZBC_SFDC_TOKEN_REST',
       gc_sfdc_path_token    TYPE string               VALUE '/services/oauth2/token',
+      gc_sfdc_path_ping     TYPE string               VALUE '/services/data/v66.0/limits',
       gc_http_ok            TYPE i                    VALUE 200.
 
 ENDCLASS.
@@ -117,6 +126,32 @@ CLASS zcl_utility IMPLEMENTATION.
 
     eo_client->get_http_request( )->set_header_field( i_name  = 'Authorization'
                                                       i_value = |Bearer { ls_token-access_token }| ).
+
+  ENDMETHOD.
+
+
+  METHOD check_sfdc_connection.
+
+    TRY.
+        create_sfdc_client( IMPORTING eo_client = DATA(lo_client)
+                                      es_error  = DATA(ls_error) ).
+
+        IF lo_client IS NOT BOUND.
+          rv_status = ls_error-http_status.
+          RETURN.
+        ENDIF.
+
+        lo_client->get_http_request( )->set_uri_path( gc_sfdc_path_ping ).
+
+        DATA(lo_response) = lo_client->execute( if_web_http_client=>get ).
+
+        rv_status = lo_response->get_status( )-code.
+
+        lo_client->close( ).
+
+      CATCH cx_root.
+        rv_status = 0.
+    ENDTRY.
 
   ENDMETHOD.
 
