@@ -8,7 +8,7 @@
 | `ZBC_SFDC_TOKEN_REST` | Outbound Service (SCO3) — HTTP · Path `/` (class ใส่ path เต็มเอง — ใช้ทั้งขอ token และยิง data) | `src/zbc_sfdc_token_rest.sco3.xml` | ทุก RICEFW ที่ยิง SFDC | ✅ `9d3da87` |
 | `ZCS_SFDC_TOKEN` | Communication Scenario outbound · **Basic** (user = client id · pw = secret ใน `SFDC_DEV`) | `src/zcs_sfdc_token.sco1.xml` | | ✅ `9d3da87` · Basic · published |
 | Communication Arrangement `ZCA_SFDC_TOKEN` | Fiori config × `SFDC_DEV` — ไม่ขึ้น git | — | | ✅ Check Connection ✓ 2026-09-21 |
-| `ZCL_UTILITY` | Class — `get_sfdc_token( )` · **`create_sfdc_client( )`** (token + Bearer + client ผ่าน `ZCA_SFDC_TOKEN` — RICEFW แค่ใส่ path/body แล้ว execute) · `parse_sfdc_token_response( )` (pure) | `src/zcl_utility.clas.abap` | ZARE002 · ZARI002 | ✅ `9d3da87` · token จริง 200 · ZARE002 Reject ผ่านถึง SFDC แล้ว (2026-09-21) |
+| `ZCL_UTILITY` | Class — `get_sfdc_token( )` · **`create_sfdc_client( )`** (token + Bearer + client ผ่าน `ZCA_SFDC_TOKEN` — RICEFW แค่ใส่ path/body แล้ว execute) · `parse_sfdc_token_response( )` (pure) · `check_sfdc_connection( )` (GET `/services/data/v66.0/limits` — 200 = arrangement + token ใช้ได้ · ห้ามใช้ `/services/data/` เพราะไม่ต้องใช้ token) | `src/zcl_utility.clas.abap` | ZARE002 · ZARI002 | ✅ `d56f201` · token จริง 200 · ZARE002 Reject ผ่านถึง SFDC แล้ว (2026-09-21) |
 | `ZCL_UTILITY` testclasses | parse token / error response — ไม่ต่อ SFDC | `src/zcl_utility.clas.testclasses.abap` | | ✅ `9d3da87` · 4 test เขียว |
 
 ## ผู้เรียกที่ต้องปรับ
