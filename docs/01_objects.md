@@ -24,5 +24,5 @@
 | แถว | ใครใช้ | ลบได้เมื่อ |
 |---|---|---|
 | User ID and Password (client id / secret) | `ZCA_SFDC_TOKEN` | — ตัวหลักของ `ZCL_UTILITY` |
-| OAuth 2.0 (Form Field) | arrangement OAuth ทุกตัวที่ยังเหลือ: `ZCA_REJECT_RESULT` (ลบใน ZARE002 8C.10) · ZARI002 · ARI001 | **หลัง** ผู้เรียกทุกตัวย้ายมา `create_sfdc_client` แล้วลบ/เปลี่ยน arrangement ของตัวเอง — platform ไม่ยอมลบ user ที่ยังมี arrangement ชี้อยู่ |
+| OAuth 2.0 (Form Field) | arrangement OAuth ที่ยังเหลือ: `ZCA_PAYMENT_RESULT` (ARI002) · `ZCA_BILLING_LIST_TO_SF` (ARI001) — `ZCA_REJECT_RESULT` ของ ZARE002 ลบแล้ว 2026-09-21 | **หลัง** ผู้เรียกทุกตัวย้ายมา `create_sfdc_client` แล้วลบ/เปลี่ยน arrangement ของตัวเอง — platform ไม่ยอมลบ user ที่ยังมี arrangement ชี้อยู่ |
 
