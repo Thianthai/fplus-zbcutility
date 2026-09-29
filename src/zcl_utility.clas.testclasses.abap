@@ -7,11 +7,11 @@ CLASS ltc_utility DEFINITION FINAL FOR TESTING
 
     "! token response ปกติ (key ตามที่ Salesforce ส่งจริง ไม่มี expires_in)
     METHODS sfdc_token_200_is_success     FOR TESTING.
-    "! 400 invalid_client → error_code + description
+    "! 400 invalid_client -> error_code + description
     METHODS sfdc_token_400_is_failure     FOR TESTING.
-    "! 200 แต่ไม่มี access_token → NO_TOKEN
+    "! 200 แต่ไม่มี access_token -> NO_TOKEN
     METHODS sfdc_token_200_without_token  FOR TESTING.
-    "! HTML แทน JSON → NO_TOKEN + เศษ body ไม่ dump
+    "! HTML แทน JSON -> NO_TOKEN + เศษ body ไม่ dump
     METHODS sfdc_token_garbage            FOR TESTING.
 
 ENDCLASS.
