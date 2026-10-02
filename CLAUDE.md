@@ -14,6 +14,12 @@
 - แก้ของในนี้ = กระทบทุก RICEFW ที่เรียก · ห้ามเปลี่ยน signature ของ method ที่มีผู้ใช้แล้ว ให้เพิ่ม method ใหม่
 - ABAP Doc ทุก class / method / constant group / type · ห้าม emoji ใน comment ABAP
 
+## Dependency ข้าม package
+
+| ของใน `ZBCUTILITY` | ใช้ของจาก | ผล |
+|---|---|---|
+| `get_form_graphic( )` / `get_form_graphic_base64( )` | `ZBCGRAPHIC` (`ZTBC_GRAPHIC` · `ZE_GRAPHIC_NAME` · `ZE_GRAPHIC_CONTENT`) — repo `fplus-zbcgraphic` | **transport `ZBCGRAPHIC` ก่อนหรือพร้อม `ZBCUTILITY` เสมอ** (ผู้ใช้รับเงื่อนไข 2026-10-02) |
+
 ## Git
 
 | สิ่งที่ทำ | ใคร |
