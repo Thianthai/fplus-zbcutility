@@ -57,6 +57,20 @@ CLASS zcl_utility DEFINITION
                 iv_http_status   TYPE i
       RETURNING VALUE(rs_result) TYPE ty_sfdc_token_result.
 
+    "! ดึงรูปจากแอป Maintain Form Graphics (package ZBCGRAPHIC) เพื่อ binding ใน Adobe Form
+    "! แปลง iv_graphic_name เป็นตัวพิมพ์ใหญ่ก่อนค้น เพราะแอปเก็บชื่อเป็นตัวพิมพ์ใหญ่เสมอ
+    "! คืนเฉพาะรูปที่ is_active = X
+    "! ไม่เจอชื่อ หรือรูปไม่ active = คืนค่าว่าง ให้ caller ตัดสินเอง
+    CLASS-METHODS get_form_graphic
+      IMPORTING iv_graphic_name           TYPE ze_graphic_name
+      RETURNING VALUE(rv_graphic_content) TYPE ze_graphic_content.
+
+    "! เหมือน get_form_graphic แต่คืนเป็น base64 สำหรับใส่ใน XML data ของ Adobe Form
+    "! ไม่เจอชื่อ หรือรูปไม่ active = คืนค่าว่าง
+    CLASS-METHODS get_form_graphic_base64
+      IMPORTING iv_graphic_name          TYPE ze_graphic_name
+      RETURNING VALUE(rv_graphic_base64) TYPE string.
+
   PRIVATE SECTION.
 
     CONSTANTS:
@@ -217,6 +231,36 @@ CLASS zcl_utility IMPLEMENTATION.
       rs_result-error_message = substring( val = iv_json
                                            len = nmin( val1 = strlen( iv_json ) val2 = 100 ) ).
     ENDIF.
+
+  ENDMETHOD.
+
+
+  METHOD get_form_graphic.
+
+    " แอปเก็บ graphic_name เป็นตัวพิมพ์ใหญ่เสมอ
+    DATA lv_graphic_name TYPE ze_graphic_name.
+
+    lv_graphic_name = to_upper( iv_graphic_name ).
+
+    " graphic_name ไม่ซ้ำทั้ง table เพราะแอปมี validation กันไว้
+    SELECT SINGLE graphic_content
+      FROM ztbc_graphic
+      WHERE graphic_name = @lv_graphic_name
+        AND is_active    = @abap_true
+      INTO @rv_graphic_content.
+
+  ENDMETHOD.
+
+
+  METHOD get_form_graphic_base64.
+
+    DATA(lv_graphic_content) = get_form_graphic( iv_graphic_name ).
+
+    IF lv_graphic_content IS INITIAL.
+      RETURN.
+    ENDIF.
+
+    rv_graphic_base64 = cl_web_http_utility=>encode_x_base64( lv_graphic_content ).
 
   ENDMETHOD.
 
