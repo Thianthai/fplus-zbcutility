@@ -15,12 +15,7 @@ CLASS zcl_utility DEFINITION
         success       TYPE abap_bool,
         error_code    TYPE string,
         error_message TYPE string,
-      END OF ty_sfdc_token_result,
-
-      "! constant parameter ที่ใช้ใน class
-      BEGIN OF ty_param,
-        lc_timezone TYPE timezone,
-      END OF ty_param.
+      END OF ty_sfdc_token_result.
 
     CONSTANTS:
       "! error_code จาก class
@@ -77,15 +72,17 @@ CLASS zcl_utility DEFINITION
       IMPORTING iv_graphic_name          TYPE ze_graphic_name
       RETURNING VALUE(rv_graphic_base64) TYPE string.
 
-    "! แปลงเวลา UTC เป็นวันที่และเวลาไทยแบบ UTC+7 ตายตัว
+    "! แปลงเวลา UTC เป็นวันที่และเวลาตาม local timezone
+    "! timezone อ่านจาก constant parameter ผ่าน ZCL_PARAM
+    "! ไม่มี param หรือ param เป็น timezone ที่ไม่ถูกต้อง จะใช้ UTC+7 แทน
     "! ไม่ส่ง iv_timestamp = ใช้เวลาปัจจุบันของระบบ
-    "! ส่ง iv_timestamp = แปลงเวลานั้นแทน รับได้ทั้ง TIMESTAMP และ TIMESTAMPL
+    "! ส่ง iv_timestamp = แปลงเวลาจาก iv_timestamp แทน รับได้ทั้ง TIMESTAMP และ TIMESTAMPL
     "! แปลงไม่สำเร็จ = ev_subrc ไม่เป็น 0 และ ev_date กับ ev_time ว่าง
-    "! ใช้ EXPORTING แทนการคืน structure โดยตั้งใจ เพราะผู้ใช้ต้องการแค่ค่าเหล่านี้
+    "! อ่าน ZTBC_PARAM ทุกครั้งที่เรียก ควรเรียกครั้งเดียว ไม่ควรเรียกใน loop
     "! @parameter iv_timestamp | เวลา UTC ที่ต้องการแปลง
-    "! @parameter ev_date      | วันที่ไทย YYYYMMDD
-    "! @parameter ev_time      | เวลาไทย HHMMSS
-    "! @parameter ev_subrc     | sy-subrc ของ CONVERT TIME STAMP
+    "! @parameter ev_date      | วันที่ local YYYYMMDD
+    "! @parameter ev_time      | เวลา local HHMMSS
+    "! @parameter ev_subrc     | sy-subrc ของ CONVERT TIME STAMP รอบที่ใช้จริง
     "!                         | 0 = สำเร็จ
     "!                         | 8 = ไม่มี timezone นี้บน tenant
     "!                         | 12 = timestamp ที่ส่งมาไม่ถูกต้อง
@@ -105,9 +102,9 @@ CLASS zcl_utility DEFINITION
       gc_sfdc_path_ping     TYPE string               VALUE '/services/data/v66.0/limits',
       gc_http_ok            TYPE i                    VALUE 200,
 
-      "! timezone ไทยแบบตายตัว
+      "! timezone ประเทศไทย
       "! ใช้ UTC+7 เพราะเป็น ID ที่มีอยู่จริงบน tenant
-      "! THA, BANGKOK และ INDCH ไม่มี ทำให้ CONVERT TIME STAMP ล้มเงียบด้วย sy-subrc 8
+      "! THA, BANGKOK และ INDCH ไม่มี ทำให้ CONVERT TIME STAMP ไม่ผ่านด้วย sy-subrc 8
       "! cl_abap_context_info=>get_user_time_zone( ) ใช้ไม่ได้ เพราะคืน UTC แม้ user ตั้ง Asia/Bangkok ไว้
       gc_local_time_zone    TYPE timezone             VALUE 'UTC+7'.
 
@@ -298,25 +295,51 @@ CLASS zcl_utility IMPLEMENTATION.
   METHOD get_local_datetime.
 
     DATA lv_timestamp TYPE timestampl.
+    DATA lv_timezone  TYPE timezone.
 
     CLEAR: ev_date,
            ev_time,
            ev_subrc.
 
-    " ไม่ส่งเวลามา -> ใช้เวลาปัจจุบันของระบบ ซึ่งเป็น UTC เสมอ
-    " ส่งมา -> ย้ายลง TIMESTAMPL ก่อน เพราะ iv_timestamp เป็น packed แบบ generic
+    " ไม่ส่ง iv_timestamp มา -> ใช้เวลาปัจจุบันของระบบ ซึ่งเป็น UTC เสมอ
+    " ส่ง iv_timestamp มา -> ย้ายลง TIMESTAMPL ก่อน เพราะ iv_timestamp เป็น packed แบบ generic
     IF iv_timestamp IS SUPPLIED AND iv_timestamp IS NOT INITIAL.
       lv_timestamp = iv_timestamp.
     ELSE.
       GET TIME STAMP FIELD lv_timestamp.
     ENDIF.
 
-    CONVERT TIME STAMP lv_timestamp
-            TIME ZONE  gc_local_time_zone
-            INTO DATE  ev_date
-                 TIME  ev_time.
+    " อ่าน timezone จาก constant parameter ก่อน
+    DATA(lo_param) = zcl_param=>create_instance( iv_company_code = ''
+                                                 iv_module_id    = 'BC' ).
 
-    ev_subrc = sy-subrc.
+    TRY.
+        lo_param->get_value( EXPORTING iv_app_id     = 'PARAM'
+                                       iv_param_name = 'TIMEZONE'
+                                       iv_param_ext  = 'LOCAL'
+                             IMPORTING ev_value      = lv_timezone ).
+      CATCH zcx_param ##NO_HANDLER.
+        " ไม่มี param หรือค่าลง type timezone ไม่ได้
+        " ปล่อย lv_timezone ว่างไว้ แล้วใช้ UTC+7 ด้านล่าง
+    ENDTRY.
+
+    IF lv_timezone IS NOT INITIAL.
+      CONVERT TIME STAMP lv_timestamp
+              TIME ZONE  lv_timezone
+              INTO DATE  ev_date
+                   TIME  ev_time.
+      ev_subrc = sy-subrc.
+    ENDIF.
+
+    " ไม่มี param -> ใช้ UTC+7
+    " มี param แต่ timezone ใช้ไม่ได้ (sy-subrc 8) -> ลองใหม่ด้วย UTC+7
+    IF lv_timezone IS INITIAL OR ev_subrc <> 0.
+      CONVERT TIME STAMP lv_timestamp
+              TIME ZONE  gc_local_time_zone
+              INTO DATE  ev_date
+                   TIME  ev_time.
+      ev_subrc = sy-subrc.
+    ENDIF.
 
     " แปลงไม่สำเร็จ ไม่คืนวันที่หรือเวลาที่อาจผิด
     IF ev_subrc <> 0.

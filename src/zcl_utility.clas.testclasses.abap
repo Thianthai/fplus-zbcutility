@@ -168,27 +168,87 @@ CLASS ltc_form_graphic IMPLEMENTATION.
 ENDCLASS.
 
 
-"! ทดสอบ get_local_datetime
+"! ทดสอบ get_local_datetime ด้วย SQL test double ของ ZTBC_PARAM
 "! ส่งเวลาที่รู้ค่าแน่นอนเข้าไป ไม่พึ่งนาฬิกาจริง ยกเว้นเคสที่ไม่ส่งเวลา
+"! ไม่ขึ้นกับ param ที่ maintain จริงบน tenant
 CLASS ltc_local_datetime DEFINITION FINAL FOR TESTING
   DURATION SHORT
   RISK LEVEL HARMLESS.
 
   PRIVATE SECTION.
 
-    "! TIMESTAMPL 07:22:57 UTC -> 14:22:57 วันเดียวกัน
-    METHODS converts_timestampl FOR TESTING.
-    "! TIMESTAMP 07:22:57 UTC -> 14:22:57 วันเดียวกัน
-    METHODS converts_timestamp  FOR TESTING.
-    "! 17:30:00 UTC -> 00:30:00 ของวันถัดไป
-    METHODS crosses_midnight    FOR TESTING.
-    "! ไม่ส่งเวลา -> ใช้เวลาปัจจุบันและแปลงสำเร็จ
-    METHODS no_input_uses_now   FOR TESTING.
+    CLASS-DATA:
+      "! SQL test double ของ ZTBC_PARAM
+      go_environment TYPE REF TO if_osql_test_environment.
+
+    "! สร้าง test double ของ ZTBC_PARAM ครั้งเดียวต่อ class
+    CLASS-METHODS class_setup.
+
+    "! ทำลาย test double
+    CLASS-METHODS class_teardown.
+
+    "! ล้าง test double ทุก test -> ค่าเริ่มต้นคือไม่มี param
+    METHODS setup.
+
+    "! ไม่มี param, TIMESTAMPL 07:22:57 UTC -> 14:22:57 วันเดียวกัน
+    METHODS converts_timestampl        FOR TESTING.
+    "! ไม่มี param, TIMESTAMP 07:22:57 UTC -> 14:22:57 วันเดียวกัน
+    METHODS converts_timestamp         FOR TESTING.
+    "! ไม่มี param, 17:30:00 UTC -> 00:30:00 ของวันถัดไป
+    METHODS crosses_midnight           FOR TESTING.
+    "! ไม่มี param, ไม่ส่งเวลา -> ใช้เวลาปัจจุบันและแปลงสำเร็จ
+    METHODS no_input_uses_now          FOR TESTING.
+    "! param = UTC+8, 07:22:57 UTC -> 15:22:57 พิสูจน์ว่าอ่าน param จริง
+    METHODS param_timezone_is_used     FOR TESTING.
+    "! param = THA ซึ่งไม่มีบน tenant -> fallback เป็น UTC+7 ได้ 14:22:57
+    METHODS invalid_param_falls_back   FOR TESTING.
+
+    "! ใส่ param BC / TIMEZONE / LOCAL ลง test double
+    "! @parameter iv_timezone | ค่า timezone ที่ต้องการ
+    METHODS maintain_timezone
+      IMPORTING iv_timezone TYPE ztbc_param-low_value.
 
 ENDCLASS.
 
 
 CLASS ltc_local_datetime IMPLEMENTATION.
+
+  METHOD class_setup.
+    go_environment = cl_osql_test_environment=>create( i_dependency_list = VALUE #( ( 'ZTBC_PARAM' ) ) ).
+  ENDMETHOD.
+
+
+  METHOD class_teardown.
+    go_environment->destroy( ).
+  ENDMETHOD.
+
+
+  METHOD setup.
+    go_environment->clear_doubles( ).
+  ENDMETHOD.
+
+
+  METHOD maintain_timezone.
+
+    DATA lt_param TYPE STANDARD TABLE OF ztbc_param WITH EMPTY KEY.
+
+    " ZCL_PARAM กรองเฉพาะ record ที่ start_date <= วันนี้ <= end_date
+    lt_param = VALUE #( ( company_code = ''
+                          module_id    = 'BC'
+                          app_id       = 'PARAM'
+                          param_name   = 'TIMEZONE'
+                          param_ext    = 'LOCAL'
+                          sequence     = 1
+                          start_date   = '19000101'
+                          end_date     = '99991231'
+                          param_sign   = 'I'
+                          param_option = 'EQ'
+                          low_value    = iv_timezone ) ).
+
+    go_environment->insert_test_data( lt_param ).
+
+  ENDMETHOD.
+
 
   METHOD converts_timestampl.
 
@@ -256,6 +316,49 @@ CLASS ltc_local_datetime IMPLEMENTATION.
     " subrc 8 แปลว่า timezone UTC+7 ไม่มีบน tenant นี้
     cl_abap_unit_assert=>assert_equals( act = lv_subrc exp = 0 ).
     cl_abap_unit_assert=>assert_not_initial( lv_date ).
+
+  ENDMETHOD.
+
+
+  METHOD param_timezone_is_used.
+
+    DATA lv_timestamp TYPE timestampl.
+
+    maintain_timezone( 'UTC+8' ).
+
+    CONVERT DATE '20260930' TIME '072257'
+            INTO TIME STAMP lv_timestamp TIME ZONE 'UTC'.
+
+    zcl_utility=>get_local_datetime( EXPORTING iv_timestamp = lv_timestamp
+                                     IMPORTING ev_date      = DATA(lv_date)
+                                               ev_time      = DATA(lv_time)
+                                               ev_subrc     = DATA(lv_subrc) ).
+
+    cl_abap_unit_assert=>assert_equals( act = lv_subrc exp = 0 ).
+    cl_abap_unit_assert=>assert_equals( act = lv_date  exp = '20260930' ).
+    cl_abap_unit_assert=>assert_equals( act = lv_time  exp = '152257' ).
+
+  ENDMETHOD.
+
+
+  METHOD invalid_param_falls_back.
+
+    DATA lv_timestamp TYPE timestampl.
+
+    " THA ไม่มีบน tenant -> CONVERT ได้ sy-subrc 8 -> ต้องลองใหม่ด้วย UTC+7
+    maintain_timezone( 'THA' ).
+
+    CONVERT DATE '20260930' TIME '072257'
+            INTO TIME STAMP lv_timestamp TIME ZONE 'UTC'.
+
+    zcl_utility=>get_local_datetime( EXPORTING iv_timestamp = lv_timestamp
+                                     IMPORTING ev_date      = DATA(lv_date)
+                                               ev_time      = DATA(lv_time)
+                                               ev_subrc     = DATA(lv_subrc) ).
+
+    cl_abap_unit_assert=>assert_equals( act = lv_subrc exp = 0 ).
+    cl_abap_unit_assert=>assert_equals( act = lv_date  exp = '20260930' ).
+    cl_abap_unit_assert=>assert_equals( act = lv_time  exp = '142257' ).
 
   ENDMETHOD.
 
