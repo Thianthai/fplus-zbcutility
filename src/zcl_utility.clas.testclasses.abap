@@ -166,3 +166,97 @@ CLASS ltc_form_graphic IMPLEMENTATION.
   ENDMETHOD.
 
 ENDCLASS.
+
+
+"! ทดสอบ get_local_datetime
+"! ส่งเวลาที่รู้ค่าแน่นอนเข้าไป ไม่พึ่งนาฬิกาจริง ยกเว้นเคสที่ไม่ส่งเวลา
+CLASS ltc_local_datetime DEFINITION FINAL FOR TESTING
+  DURATION SHORT
+  RISK LEVEL HARMLESS.
+
+  PRIVATE SECTION.
+
+    "! TIMESTAMPL 07:22:57 UTC -> 14:22:57 วันเดียวกัน
+    METHODS converts_timestampl FOR TESTING.
+    "! TIMESTAMP 07:22:57 UTC -> 14:22:57 วันเดียวกัน
+    METHODS converts_timestamp  FOR TESTING.
+    "! 17:30:00 UTC -> 00:30:00 ของวันถัดไป
+    METHODS crosses_midnight    FOR TESTING.
+    "! ไม่ส่งเวลา -> ใช้เวลาปัจจุบันและแปลงสำเร็จ
+    METHODS no_input_uses_now   FOR TESTING.
+
+ENDCLASS.
+
+
+CLASS ltc_local_datetime IMPLEMENTATION.
+
+  METHOD converts_timestampl.
+
+    DATA lv_timestamp TYPE timestampl.
+
+    " ใช้ CONVERT แทนการเขียนเลขตรง ๆ เพราะ TIMESTAMPL เป็น packed ที่มีทศนิยม
+    CONVERT DATE '20260930' TIME '072257'
+            INTO TIME STAMP lv_timestamp TIME ZONE 'UTC'.
+
+    zcl_utility=>get_local_datetime( EXPORTING iv_timestamp = lv_timestamp
+                                     IMPORTING ev_date      = DATA(lv_date)
+                                               ev_time      = DATA(lv_time)
+                                               ev_subrc     = DATA(lv_subrc) ).
+
+    cl_abap_unit_assert=>assert_equals( act = lv_subrc exp = 0 ).
+    cl_abap_unit_assert=>assert_equals( act = lv_date  exp = '20260930' ).
+    cl_abap_unit_assert=>assert_equals( act = lv_time  exp = '142257' ).
+
+  ENDMETHOD.
+
+
+  METHOD converts_timestamp.
+
+    DATA lv_timestamp TYPE timestamp.
+
+    CONVERT DATE '20260930' TIME '072257'
+            INTO TIME STAMP lv_timestamp TIME ZONE 'UTC'.
+
+    zcl_utility=>get_local_datetime( EXPORTING iv_timestamp = lv_timestamp
+                                     IMPORTING ev_date      = DATA(lv_date)
+                                               ev_time      = DATA(lv_time)
+                                               ev_subrc     = DATA(lv_subrc) ).
+
+    cl_abap_unit_assert=>assert_equals( act = lv_subrc exp = 0 ).
+    cl_abap_unit_assert=>assert_equals( act = lv_date  exp = '20260930' ).
+    cl_abap_unit_assert=>assert_equals( act = lv_time  exp = '142257' ).
+
+  ENDMETHOD.
+
+
+  METHOD crosses_midnight.
+
+    DATA lv_timestamp TYPE timestampl.
+
+    CONVERT DATE '20260930' TIME '173000'
+            INTO TIME STAMP lv_timestamp TIME ZONE 'UTC'.
+
+    zcl_utility=>get_local_datetime( EXPORTING iv_timestamp = lv_timestamp
+                                     IMPORTING ev_date      = DATA(lv_date)
+                                               ev_time      = DATA(lv_time)
+                                               ev_subrc     = DATA(lv_subrc) ).
+
+    cl_abap_unit_assert=>assert_equals( act = lv_subrc exp = 0 ).
+    cl_abap_unit_assert=>assert_equals( act = lv_date  exp = '20261001' ).
+    cl_abap_unit_assert=>assert_equals( act = lv_time  exp = '003000' ).
+
+  ENDMETHOD.
+
+
+  METHOD no_input_uses_now.
+
+    zcl_utility=>get_local_datetime( IMPORTING ev_date  = DATA(lv_date)
+                                               ev_subrc = DATA(lv_subrc) ).
+
+    " subrc 8 แปลว่า timezone UTC+7 ไม่มีบน tenant นี้
+    cl_abap_unit_assert=>assert_equals( act = lv_subrc exp = 0 ).
+    cl_abap_unit_assert=>assert_not_initial( lv_date ).
+
+  ENDMETHOD.
+
+ENDCLASS.

@@ -1,4 +1,4 @@
-"! Utility กลางของทุก RICEFW
+"! Utility Class กลางของทุก RICEFW
 CLASS zcl_utility DEFINITION
   PUBLIC
   FINAL
@@ -15,7 +15,12 @@ CLASS zcl_utility DEFINITION
         success       TYPE abap_bool,
         error_code    TYPE string,
         error_message TYPE string,
-      END OF ty_sfdc_token_result.
+      END OF ty_sfdc_token_result,
+
+      "! constant parameter ที่ใช้ใน class
+      BEGIN OF ty_param,
+        lc_timezone TYPE timezone,
+      END OF ty_param.
 
     CONSTANTS:
       "! error_code จาก class
@@ -58,9 +63,10 @@ CLASS zcl_utility DEFINITION
       RETURNING VALUE(rs_result) TYPE ty_sfdc_token_result.
 
     "! ดึงรูปจากแอป Maintain Form Graphics (package ZBCGRAPHIC) เพื่อ binding ใน Adobe Form
-    "! แปลง iv_graphic_name เป็นตัวพิมพ์ใหญ่ก่อนค้น เพราะแอปเก็บชื่อเป็นตัวพิมพ์ใหญ่เสมอ
+    "! แปลง iv_graphic_name เป็นตัวพิมพ์ใหญ่ก่อน เพราะเก็บชื่อเป็นตัวพิมพ์ใหญ่เสมอ
+    "! คืนเป็น xstring
     "! คืนเฉพาะรูปที่ is_active = X
-    "! ไม่เจอชื่อ หรือรูปไม่ active = คืนค่าว่าง ให้ caller ตัดสินเอง
+    "! ไม่เจอชื่อ หรือรูปไม่ active = คืนค่าว่าง
     CLASS-METHODS get_form_graphic
       IMPORTING iv_graphic_name           TYPE ze_graphic_name
       RETURNING VALUE(rv_graphic_content) TYPE ze_graphic_content.
@@ -71,6 +77,24 @@ CLASS zcl_utility DEFINITION
       IMPORTING iv_graphic_name          TYPE ze_graphic_name
       RETURNING VALUE(rv_graphic_base64) TYPE string.
 
+    "! แปลงเวลา UTC เป็นวันที่และเวลาไทยแบบ UTC+7 ตายตัว
+    "! ไม่ส่ง iv_timestamp = ใช้เวลาปัจจุบันของระบบ
+    "! ส่ง iv_timestamp = แปลงเวลานั้นแทน รับได้ทั้ง TIMESTAMP และ TIMESTAMPL
+    "! แปลงไม่สำเร็จ = ev_subrc ไม่เป็น 0 และ ev_date กับ ev_time ว่าง
+    "! ใช้ EXPORTING แทนการคืน structure โดยตั้งใจ เพราะผู้ใช้ต้องการแค่ค่าเหล่านี้
+    "! @parameter iv_timestamp | เวลา UTC ที่ต้องการแปลง
+    "! @parameter ev_date      | วันที่ไทย YYYYMMDD
+    "! @parameter ev_time      | เวลาไทย HHMMSS
+    "! @parameter ev_subrc     | sy-subrc ของ CONVERT TIME STAMP
+    "!                         | 0 = สำเร็จ
+    "!                         | 8 = ไม่มี timezone นี้บน tenant
+    "!                         | 12 = timestamp ที่ส่งมาไม่ถูกต้อง
+    CLASS-METHODS get_local_datetime
+      IMPORTING iv_timestamp TYPE p OPTIONAL
+      EXPORTING ev_date      TYPE d
+                ev_time      TYPE t
+                ev_subrc     TYPE sysubrc.
+
   PRIVATE SECTION.
 
     CONSTANTS:
@@ -79,7 +103,13 @@ CLASS zcl_utility DEFINITION
       gc_sfdc_service_id    TYPE c LENGTH 40          VALUE 'ZBC_SFDC_TOKEN_REST',
       gc_sfdc_path_token    TYPE string               VALUE '/services/oauth2/token',
       gc_sfdc_path_ping     TYPE string               VALUE '/services/data/v66.0/limits',
-      gc_http_ok            TYPE i                    VALUE 200.
+      gc_http_ok            TYPE i                    VALUE 200,
+
+      "! timezone ไทยแบบตายตัว
+      "! ใช้ UTC+7 เพราะเป็น ID ที่มีอยู่จริงบน tenant
+      "! THA, BANGKOK และ INDCH ไม่มี ทำให้ CONVERT TIME STAMP ล้มเงียบด้วย sy-subrc 8
+      "! cl_abap_context_info=>get_user_time_zone( ) ใช้ไม่ได้ เพราะคืน UTC แม้ user ตั้ง Asia/Bangkok ไว้
+      gc_local_time_zone    TYPE timezone             VALUE 'UTC+7'.
 
 ENDCLASS.
 
@@ -261,6 +291,38 @@ CLASS zcl_utility IMPLEMENTATION.
     ENDIF.
 
     rv_graphic_base64 = cl_web_http_utility=>encode_x_base64( lv_graphic_content ).
+
+  ENDMETHOD.
+
+
+  METHOD get_local_datetime.
+
+    DATA lv_timestamp TYPE timestampl.
+
+    CLEAR: ev_date,
+           ev_time,
+           ev_subrc.
+
+    " ไม่ส่งเวลามา -> ใช้เวลาปัจจุบันของระบบ ซึ่งเป็น UTC เสมอ
+    " ส่งมา -> ย้ายลง TIMESTAMPL ก่อน เพราะ iv_timestamp เป็น packed แบบ generic
+    IF iv_timestamp IS SUPPLIED AND iv_timestamp IS NOT INITIAL.
+      lv_timestamp = iv_timestamp.
+    ELSE.
+      GET TIME STAMP FIELD lv_timestamp.
+    ENDIF.
+
+    CONVERT TIME STAMP lv_timestamp
+            TIME ZONE  gc_local_time_zone
+            INTO DATE  ev_date
+                 TIME  ev_time.
+
+    ev_subrc = sy-subrc.
+
+    " แปลงไม่สำเร็จ ไม่คืนวันที่หรือเวลาที่อาจผิด
+    IF ev_subrc <> 0.
+      CLEAR: ev_date,
+             ev_time.
+    ENDIF.
 
   ENDMETHOD.
 
