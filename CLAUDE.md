@@ -17,7 +17,7 @@
 
 ## Timezone
 
-- `get_local_datetime( )` อ่าน timezone จาก param `BC / PARAM / TIMEZONE / LOCAL` ก่อน · ไม่มี หรือ CONVERT ได้ 8 -> fallback `UTC+7` (`gc_local_time_zone`)
+- `get_local_datetime( )` อ่าน timezone จาก param `BC / UTILITY / TIMEZONE / LOCAL` ก่อน · ไม่มี หรือ CONVERT ได้ 8 -> fallback `UTC+7` (`gc_local_time_zone`)
 - ID ที่พิสูจน์แล้วว่ามีบน tenant: `UTC+7` · `UTC+8` · ส่วน `THA` / `BANGKOK` / `INDCH` ไม่มี -> CONVERT ล้มเงียบ sy-subrc 8
 - `cl_abap_context_info=>get_user_time_zone( )` ใช้ไม่ได้ — คืน UTC แม้ user ตั้ง Asia, Bangkok ใน Fiori Settings (เป็นค่าฝั่ง frontend)
 - timestamp ที่เก็บลง table ให้เก็บเป็น UTC เสมอ (Fiori แปลงตาม timezone ของคนดูเอง) · แปลงเป็นเวลาไทยเฉพาะตอนส่งออกให้คนอ่าน
