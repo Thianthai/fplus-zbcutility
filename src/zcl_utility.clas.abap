@@ -92,6 +92,12 @@ CLASS zcl_utility DEFINITION
                 ev_time      TYPE t
                 ev_subrc     TYPE sysubrc.
 
+    "! ลบ invisible character (NBSP, zero-width space, BOM, ideographic space)
+    "! ที่อาจติดมาจากการ copy-paste จาก Excel / Word / web
+    CLASS-METHODS remove_invisible_char
+      IMPORTING iv_text        TYPE clike
+      RETURNING VALUE(rv_text) TYPE string.
+
   PRIVATE SECTION.
 
     CONSTANTS:
@@ -346,6 +352,22 @@ CLASS zcl_utility IMPLEMENTATION.
       CLEAR: ev_date,
              ev_time.
     ENDIF.
+
+  ENDMETHOD.
+
+
+  METHOD remove_invisible_char.
+
+    rv_text = iv_text.
+
+    " U+00A0 NBSP
+    " U+200B-200D zero-width
+    " U+FEFF BOM
+    " U+3000 ideographic space
+    REPLACE ALL OCCURRENCES OF PCRE `[\x{00A0}\x{200B}-\x{200D}\x{FEFF}\x{3000}]`
+    IN rv_text WITH ` `.
+
+    rv_text = condense( rv_text ).
 
   ENDMETHOD.
 
