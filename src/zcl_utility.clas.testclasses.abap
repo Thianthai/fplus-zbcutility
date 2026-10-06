@@ -235,7 +235,7 @@ CLASS ltc_local_datetime IMPLEMENTATION.
     " ZCL_PARAM กรองเฉพาะ record ที่ start_date <= วันนี้ <= end_date
     lt_param = VALUE #( ( company_code = ''
                           module_id    = 'BC'
-                          app_id       = 'PARAM'
+                          app_id       = 'UTILITY'
                           param_name   = 'TIMEZONE'
                           param_ext    = 'LOCAL'
                           sequence     = 1

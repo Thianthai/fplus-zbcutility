@@ -314,7 +314,7 @@ CLASS zcl_utility IMPLEMENTATION.
                                                  iv_module_id    = 'BC' ).
 
     TRY.
-        lo_param->get_value( EXPORTING iv_app_id     = 'PARAM'
+        lo_param->get_value( EXPORTING iv_app_id     = 'UTILITY'
                                        iv_param_name = 'TIMEZONE'
                                        iv_param_ext  = 'LOCAL'
                              IMPORTING ev_value      = lv_timezone ).
