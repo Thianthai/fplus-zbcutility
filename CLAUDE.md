@@ -27,7 +27,22 @@
 | ของใน `ZBCUTILITY` | ใช้ของจาก | ผล |
 |---|---|---|
 | `get_form_graphic( )` / `get_form_graphic_base64( )` | `ZBCGRAPHIC` (`ZTBC_GRAPHIC` · `ZE_GRAPHIC_NAME` · `ZE_GRAPHIC_CONTENT`) — repo `fplus-zbcgraphic` | **transport `ZBCGRAPHIC` ก่อนหรือพร้อม `ZBCUTILITY` เสมอ** (ผู้ใช้รับเงื่อนไข 2026-10-02) |
-| `get_local_datetime( )` | `ZBCPARAM` (`ZCL_PARAM` · `ZCX_PARAM` · `ZTBC_PARAM`) — repo `fplus-zbcparam` | **transport `ZBCPARAM` ก่อนหรือพร้อม `ZBCUTILITY` เสมอ** (2026-10-05) |
+| `get_local_datetime( )` | `ZBCPARAM` (`ZCL_PARAM` · `ZCX_PARAM` · `ZTBC_PARAM`) — repo `fplus-zbcparam` | **พึ่งกันสองทาง — ต้อง transport พร้อมกันเท่านั้น** ดูหัวข้อถัดไป (2026-10-06) |
+
+### `ZBCPARAM` <-> `ZBCUTILITY` พึ่งกันสองทาง (ตั้งแต่ 2026-10-06)
+
+| ทิศทาง | ผู้เรียก | ถูกเรียก |
+|---|---|---|
+| `ZBCUTILITY` -> `ZBCPARAM` | `zcl_utility=>get_local_datetime( )` | `zcl_param=>create_instance( )` / `get_value( )` อ่าน timezone |
+| `ZBCPARAM` -> `ZBCUTILITY` | constructor ของ `ZCL_PARAM` | `zcl_utility=>remove_invisible_char( )` ล้าง key field ของ buffer (ย้ายมาจาก `sanitize` · `fplus-zbcparam` `8cb234f`) |
+
+- **Transport:** ทั้ง 2 package อยู่ software component `ZCUSTOM_DEVELOPMENT` เดียวกัน · import ทำทีละ software component
+  → **release TR ของทั้ง 2 package ให้ครบก่อน แล้วค่อย import** · ถ้า import ไปทั้งที่ release แค่ TR เดียว ฝั่งที่ขาดจะ activate ไม่ผ่าน
+- **Release:** ทั้ง 2 package ติ๊ก Package encapsulated · `ZCL_PARAM` release C1 อยู่ · `ZCL_UTILITY` ไม่ได้ release
+  แต่เรียกจาก `ZCL_PARAM` แล้วไม่มี warning (ผู้ใช้ยืนยัน 2026-10-06) จึงยังไม่ต้อง release
+- **กันวนไม่รู้จบ:** method ของ `ZCL_UTILITY` ที่ `ZCL_PARAM` เรียก **ห้ามเรียก `ZCL_PARAM` กลับ** เด็ดขาด
+  เพราะ `ZCL_PARAM` เรียกจาก constructor → ทุก `create_instance( )` จะวนซ้ำจน dump
+  · ด้วยเหตุนี้ `ZCL_PARAM` จึง**ห้ามใช้ `get_local_datetime( )`** (ตัวนั้นเรียก `ZCL_PARAM` อ่าน timezone) — ตกลงไม่ทำเรื่อง timezone ใน `ZCL_PARAM` แล้ว 2026-10-06
 
 ## Git
 
