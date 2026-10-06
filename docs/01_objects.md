@@ -23,8 +23,8 @@
 | RICEFW | ย้ายไปใช้ | สถานะ |
 |---|---|---|
 | ZARE002 | `create_sfdc_client` (เดิมอยู่ใน `ZCL_ZARE002_SFDC_RESULT` ซึ่งถูกลบแล้ว `fplus-zare002` `10ef08e` · การส่งผลไป SFDC ย้ายไปอยู่ ZARI003) | ✅ `fplus-zare002` `11b4185` (2026-09-21) |
-| ZARI002 | `create_sfdc_client` / `check_sfdc_connection` | ✅ `fplus-zari002` `3d21c12` (2026-09-23) · scenario `ZCS_PAYMENT_RESULT` ลบแล้ว |
-| ARI001 | `create_sfdc_client` แทน arrangement `ZCA_BILLING_LIST_TO_SF` | ✅ ผู้ใช้ยืนยัน 2026-10-06 (ไม่มี repo ในเครื่อง) |
+| ZARI002 | `create_sfdc_client` / `check_sfdc_connection` | ✅ `fplus-zari002` `3d21c12` (2026-09-23) · scenario `ZCS_PAYMENT_RESULT` ลบแล้ว · arrangement `ZCA_PAYMENT_RESULT` ลบแล้ว 2026-10-06 |
+| ARI001 | `create_sfdc_client` แทน arrangement `ZCA_BILLING_LIST_TO_SF` | ✅ ผู้ใช้ยืนยัน 2026-10-06 (ไม่มี repo ในเครื่อง) · arrangement เดิมลบแล้ว |
 | ZSDE002 | `get_local_datetime` (`ProcessingDate` / `ProcessingTime`) | ✅ `fplus-zsde002` `9894acd` (2026-10-05) |
 
 ผู้ใช้ `get_local_datetime` อื่นที่เห็นใน repo: ZARE002 · ZARI002 `a9176d1` · ZARI003 `a276fb0` · ZIME001
@@ -34,7 +34,7 @@
 | แถว | ใครใช้ | ลบได้เมื่อ |
 |---|---|---|
 | User ID and Password (client id / secret) | `ZCA_SFDC_TOKEN` | — ตัวหลักของ `ZCL_UTILITY` |
-| OAuth 2.0 (Form Field) | ผู้เรียกย้ายมา `create_sfdc_client` ครบแล้ว 2026-10-06 · arrangement เดิม: `ZCA_REJECT_RESULT` (ZARE002) ลบแล้ว 2026-09-21 · `ZCA_PAYMENT_RESULT` (ARI002) และ `ZCA_BILLING_LIST_TO_SF` (ARI001) ยังไม่ยืนยันว่าลบแล้ว | หลังลบ `ZCA_PAYMENT_RESULT` และ `ZCA_BILLING_LIST_TO_SF` บน tenant แล้ว — platform ไม่ยอมลบ user ที่ยังมี arrangement ชี้อยู่ |
+| OAuth 2.0 (Form Field) | ไม่มี arrangement ชี้อยู่แล้ว · `ZCA_REJECT_RESULT` (ZARE002) ลบแล้ว 2026-09-21 · `ZCA_PAYMENT_RESULT` (ARI002) และ `ZCA_BILLING_LIST_TO_SF` (ARI001) ลบแล้ว (ผู้ใช้ยืนยัน 2026-10-06) | **ลบได้แล้ว** — ยังไม่ได้ยืนยันว่าลบ user นี้ออกจาก `SFDC_DEV` แล้ว |
 
 ## Config ที่ต้อง maintain (ทุก tenant)
 
