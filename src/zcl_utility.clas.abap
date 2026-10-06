@@ -92,8 +92,12 @@ CLASS zcl_utility DEFINITION
                 ev_time      TYPE t
                 ev_subrc     TYPE sysubrc.
 
-    "! ลบ invisible character (NBSP, zero-width space, BOM, ideographic space)
-    "! ที่อาจติดมาจากการ copy-paste จาก Excel / Word / web
+    "! ลบ invisible character ที่อาจติดมาจากการ copy-paste จาก Excel / Word / web
+    "! zero-width (U+200B ถึง U+200D) และ BOM (U+FEFF) ลบทิ้ง เพราะไม่มีความกว้าง
+    "! NBSP (U+00A0) และ ideographic space (U+3000) แทนด้วยช่องว่างปกติ เพราะเป็นช่องว่างอยู่แล้ว
+    "! จากนั้น condense คือตัดช่องว่างหัวท้าย และยุบช่องว่างที่ติดกันกลางข้อความให้เหลือตัวเดียว
+    "! @parameter iv_text | ข้อความที่ต้องการล้าง
+    "! @parameter rv_text | ข้อความที่ล้างแล้ว
     CLASS-METHODS remove_invisible_char
       IMPORTING iv_text        TYPE clike
       RETURNING VALUE(rv_text) TYPE string.
@@ -360,11 +364,17 @@ CLASS zcl_utility IMPLEMENTATION.
 
     rv_text = iv_text.
 
-    " U+00A0 NBSP
-    " U+200B-200D zero-width
+    " ตัวที่ไม่มีความกว้าง -> ลบทิ้ง
+    " ถ้าแทนด้วยช่องว่าง คำที่มีตัวนี้แทรกกลางจะถูกแยกเป็นสองคำ
+    " U+200B ถึง U+200D zero-width
     " U+FEFF BOM
+    REPLACE ALL OCCURRENCES OF PCRE `[\x{200B}-\x{200D}\x{FEFF}]`
+    IN rv_text WITH ``.
+
+    " ตัวที่เป็นช่องว่างอยู่แล้ว -> แทนด้วยช่องว่างปกติ
+    " U+00A0 NBSP
     " U+3000 ideographic space
-    REPLACE ALL OCCURRENCES OF PCRE `[\x{00A0}\x{200B}-\x{200D}\x{FEFF}\x{3000}]`
+    REPLACE ALL OCCURRENCES OF PCRE `[\x{00A0}\x{3000}]`
     IN rv_text WITH ` `.
 
     rv_text = condense( rv_text ).

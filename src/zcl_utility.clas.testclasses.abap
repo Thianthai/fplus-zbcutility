@@ -363,3 +363,143 @@ CLASS ltc_local_datetime IMPLEMENTATION.
   ENDMETHOD.
 
 ENDCLASS.
+
+
+"! ทดสอบ remove_invisible_char
+"! สร้างตัวอักษรพิเศษจาก byte UTF-8 เพราะ ABAP เขียน U+xxxx ใน literal ตรง ๆ ไม่ได้
+CLASS ltc_invisible_char DEFINITION FINAL FOR TESTING
+  DURATION SHORT
+  RISK LEVEL HARMLESS.
+
+  PRIVATE SECTION.
+
+    DATA:
+      "! U+00A0 NBSP
+      gv_nbsp                    TYPE string,
+      "! U+3000 ideographic space
+      gv_ideographic_space       TYPE string,
+      "! U+200B zero-width space
+      gv_zero_width_space        TYPE string,
+      "! U+200C zero-width non-joiner
+      gv_zero_width_non_joiner   TYPE string,
+      "! U+200D zero-width joiner
+      gv_zero_width_joiner       TYPE string,
+      "! U+FEFF BOM
+      gv_bom                     TYPE string.
+
+    "! สร้างตัวอักษรพิเศษทั้งหมดก่อนทุก test
+    METHODS setup.
+
+    "! NBSP กลางคำ -> ช่องว่างปกติ
+    METHODS nbsp_becomes_space          FOR TESTING.
+    "! ideographic space กลางคำ -> ช่องว่างปกติ
+    METHODS ideographic_becomes_space   FOR TESTING.
+    "! zero-width ทั้งสามตัวกลางคำ -> ลบทิ้ง คำไม่ถูกแยก
+    METHODS zero_width_is_removed       FOR TESTING.
+    "! BOM หน้าข้อความ -> ลบทิ้ง
+    METHODS bom_is_removed              FOR TESTING.
+    "! NBSP หน้าข้อความ และ ideographic space ท้ายข้อความ -> ถูกตัดออกหมด
+    METHODS edges_are_trimmed           FOR TESTING.
+    "! ข้อความปกติ -> ได้ค่าเดิม
+    METHODS plain_text_is_unchanged     FOR TESTING.
+    "! ข้อความว่าง -> ได้ค่าว่าง ไม่ dump
+    METHODS empty_text_is_empty         FOR TESTING.
+
+    "! แปลง byte UTF-8 ในรูป hex เป็นตัวอักษร
+    "! @parameter iv_hex  | byte UTF-8 เช่น E2808B
+    "! @parameter rv_char | ตัวอักษรที่ได้
+    METHODS utf8_char
+      IMPORTING iv_hex         TYPE string
+      RETURNING VALUE(rv_char) TYPE string.
+
+ENDCLASS.
+
+
+CLASS ltc_invisible_char IMPLEMENTATION.
+
+  METHOD setup.
+    gv_nbsp                  = utf8_char( `C2A0` ).
+    gv_ideographic_space     = utf8_char( `E38080` ).
+    gv_zero_width_space      = utf8_char( `E2808B` ).
+    gv_zero_width_non_joiner = utf8_char( `E2808C` ).
+    gv_zero_width_joiner     = utf8_char( `E2808D` ).
+    gv_bom                   = utf8_char( `EFBBBF` ).
+  ENDMETHOD.
+
+
+  METHOD nbsp_becomes_space.
+
+    DATA(lv_text) = zcl_utility=>remove_invisible_char( |TIME{ gv_nbsp }ZONE| ).
+
+    cl_abap_unit_assert=>assert_equals( act = lv_text exp = `TIME ZONE` ).
+
+  ENDMETHOD.
+
+
+  METHOD ideographic_becomes_space.
+
+    DATA(lv_text) = zcl_utility=>remove_invisible_char( |TIME{ gv_ideographic_space }ZONE| ).
+
+    cl_abap_unit_assert=>assert_equals( act = lv_text exp = `TIME ZONE` ).
+
+  ENDMETHOD.
+
+
+  METHOD zero_width_is_removed.
+
+    DATA(lv_text) = zcl_utility=>remove_invisible_char(
+                      |TI{ gv_zero_width_space }ME{ gv_zero_width_non_joiner }ZO{ gv_zero_width_joiner }NE| ).
+
+    cl_abap_unit_assert=>assert_equals( act = lv_text exp = `TIMEZONE` ).
+
+  ENDMETHOD.
+
+
+  METHOD bom_is_removed.
+
+    DATA(lv_text) = zcl_utility=>remove_invisible_char( |{ gv_bom }UTILITY| ).
+
+    cl_abap_unit_assert=>assert_equals( act = lv_text exp = `UTILITY` ).
+
+  ENDMETHOD.
+
+
+  METHOD edges_are_trimmed.
+
+    DATA(lv_text) = zcl_utility=>remove_invisible_char( |{ gv_nbsp }LOCAL{ gv_ideographic_space }| ).
+
+    cl_abap_unit_assert=>assert_equals( act = lv_text exp = `LOCAL` ).
+
+  ENDMETHOD.
+
+
+  METHOD plain_text_is_unchanged.
+
+    DATA(lv_text) = zcl_utility=>remove_invisible_char( `LOCAL` ).
+
+    cl_abap_unit_assert=>assert_equals( act = lv_text exp = `LOCAL` ).
+
+  ENDMETHOD.
+
+
+  METHOD empty_text_is_empty.
+
+    DATA(lv_text) = zcl_utility=>remove_invisible_char( `` ).
+
+    cl_abap_unit_assert=>assert_initial( lv_text ).
+
+  ENDMETHOD.
+
+
+  METHOD utf8_char.
+
+    DATA lv_bytes TYPE xstring.
+
+    " string -> xstring อ่านแต่ละคู่ตัวอักษรเป็น hex 1 byte
+    lv_bytes = iv_hex.
+
+    rv_char = cl_abap_conv_codepage=>create_in( )->convert( lv_bytes ).
+
+  ENDMETHOD.
+
+ENDCLASS.
