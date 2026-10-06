@@ -5,7 +5,7 @@
 | Package | **`ZBCUTILITY`** — package เดียว |
 | Platform | SAP S/4HANA Cloud **Public Edition** · ABAP for Cloud Development |
 | หน้าที่ | ของที่ RICEFW มากกว่า 1 ตัวใช้ร่วมกัน — ไม่มี business logic ของ RICEFW ใดอยู่ที่นี่ |
-| ผู้ใช้ปัจจุบัน | **ZARE002** (Reject → Salesforce) · **ZARI002** (แจ้งผลรับข้อมูล → Salesforce) ตามมา |
+| ผู้ใช้ปัจจุบัน | Salesforce: **ZARI002** · **ZARI003** · **ARI001** · local time: **ZSDE002** · **ZARE002** · **ZARI002** · **ZARI003** · **ZIME001** — รายละเอียดใน `docs/01_objects.md` |
 | Repo sync | abapGit (local ⇄ GitHub ⇄ tenant) |
 
 ## สิ่งที่อยู่ในนี้
