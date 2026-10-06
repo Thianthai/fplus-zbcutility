@@ -38,11 +38,22 @@
 
 - **Transport:** ทั้ง 2 package อยู่ software component `ZCUSTOM_DEVELOPMENT` เดียวกัน · import ทำทีละ software component
   → **release TR ของทั้ง 2 package ให้ครบก่อน แล้วค่อย import** · ถ้า import ไปทั้งที่ release แค่ TR เดียว ฝั่งที่ขาดจะ activate ไม่ผ่าน
-- **Release:** ทั้ง 2 package ติ๊ก Package encapsulated · `ZCL_PARAM` release C1 อยู่ · `ZCL_UTILITY` ไม่ได้ release
-  แต่เรียกจาก `ZCL_PARAM` แล้วไม่มี warning (ผู้ใช้ยืนยัน 2026-10-06) จึงยังไม่ต้อง release
+- **Release:** `ZCL_UTILITY` ไม่ต้อง release C1 เพราะทุกผู้เรียกอยู่ software component `ZCUSTOM_DEVELOPMENT` เดียวกัน
+  (`ZCL_PARAM` เรียกแล้วไม่มี warning · ผู้ใช้ยืนยัน 2026-10-06) — ดูหัวข้อ Release C1 ข้างล่าง
 - **กันวนไม่รู้จบ:** method ของ `ZCL_UTILITY` ที่ `ZCL_PARAM` เรียก **ห้ามเรียก `ZCL_PARAM` กลับ** เด็ดขาด
   เพราะ `ZCL_PARAM` เรียกจาก constructor → ทุก `create_instance( )` จะวนซ้ำจน dump
   · ด้วยเหตุนี้ `ZCL_PARAM` จึง**ห้ามใช้ `get_local_datetime( )`** (ตัวนั้นเรียก `ZCL_PARAM` อ่าน timezone) — ตกลงไม่ทำเรื่อง timezone ใน `ZCL_PARAM` แล้ว 2026-10-06
+
+## Release C1 — ต้องใช้เมื่อไหร่ (สรุป 2026-10-06)
+
+- object ใน software component เดียวกัน (`ZCUSTOM_DEVELOPMENT`) เรียกข้าม package กันได้เลย **ไม่ต้อง release**
+  · หลักฐาน: `ZCL_ZIME001` (package `ZIME001`) และ `ZCL_PARAM` เรียก `ZCL_UTILITY` ที่ไม่ได้ release ได้ปกติ
+- ต้อง release C1 เฉพาะเมื่อ **ถูกเรียกจาก software component อื่น** หรือ **ถูกเรียกตรงจาก key user app** (Custom Logic ฯลฯ — ติ๊ก Use in Key User Apps)
+- Custom Logic บังคับ release เฉพาะ class ที่ตัวมันเรียกตรง + type ที่อยู่ใน public section ของ class นั้น
+  · สิ่งที่ class นั้นเรียกต่อข้างใน implementation ไม่ต้อง release (`ZCL_ZIME001` release แต่ `ZCL_UTILITY` ที่มันเรียกไม่ต้อง)
+- "Package encapsulated" ที่ติ๊กไว้ทั้ง `ZBCUTILITY` / `ZBCPARAM` ไม่ได้ขวางการเรียกข้าม package ใน software component เดียวกัน (สังเกตจากของจริง)
+- class ที่ release แล้วห้ามลบ / เปลี่ยน public method แบบ incompatible — จะต้องถอน release ก่อนแล้ว release ใหม่
+  (เจอจริงตอนย้าย `ZCL_PARAM=>sanitize` มาเป็น `remove_invisible_char` 2026-10-06)
 
 ## Git
 
