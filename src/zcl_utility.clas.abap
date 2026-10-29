@@ -121,7 +121,9 @@ CLASS zcl_utility DEFINITION
 ENDCLASS.
 
 
-CLASS zcl_utility IMPLEMENTATION.
+
+CLASS ZCL_UTILITY IMPLEMENTATION.
+
 
   METHOD get_sfdc_token.
 
@@ -380,5 +382,4 @@ CLASS zcl_utility IMPLEMENTATION.
     rv_text = condense( rv_text ).
 
   ENDMETHOD.
-
 ENDCLASS.
